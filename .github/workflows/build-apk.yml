@@ -7,12 +7,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.5'
+          flutter-version: '3.24.5'
           channel: 'stable'
-      - name: Setup project
-        run: flutter create . --project-name scamlens --org com.scamlens.app --platforms android
+      - name: Clean and create
+        run: |
+          rm -rf android ios web windows macos linux test
+          flutter create --project-name scamlens --org com.scamlens.app --platforms android . --overwrite
       - name: Build APK
-        run: flutter build apk --release
+        run: flutter build apk --release --verbose
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
