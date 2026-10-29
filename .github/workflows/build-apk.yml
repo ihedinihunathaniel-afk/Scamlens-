@@ -1,0 +1,76 @@
+name: Build ScamLens APK
+on:
+  push:
+    branches: [ main ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.6'
+          channel: 'stable'
+      - name: Create Flutter project
+        run: |
+          flutter create . --project-name scamlens --platforms android --org com.scamlens.app
+          cat > lib/main.dart << 'ENDDART'
+          import 'package:flutter/material.dart';
+          void main() => runApp(ScamLensApp());
+          class ScamLensApp extends StatelessWidget {
+            @override
+            Widget build(BuildContext context) {
+              return MaterialApp(title: 'ScamLens', debugShowCheckedModeBanner: false, theme: ThemeData(primarySwatch: Colors.deepPurple, useMaterial3: true), home: HomeScreen());
+            }
+          }
+          class HomeScreen extends StatefulWidget {
+            @override
+            State<HomeScreen> createState() => _HomeScreenState();
+          }
+          class _HomeScreenState extends State<HomeScreen> {
+            final _controller = TextEditingController();
+            String _result = "";
+            Color _resultColor = Colors.grey;
+            void _checkScam() {
+              final text = _controller.text.toLowerCase();
+              if (text.isEmpty) {
+                setState(() { _result = "Abeg paste message first"; _resultColor = Colors.orange; });
+                return;
+              }
+              List<String> scamWords = ["urgent", "bvn blocked", "win", "lottery", "click link", "verify account", "send otp", "crypto double", "giveaway", "blocked"];
+              bool isScam = scamWords.any((w) => text.contains(w));
+              setState(() {
+                if (isScam) {
+                  _result = "⚠️ POSSIBLE SCAM!\nNo click link, no share OTP/BVN!";
+                  _resultColor = Colors.red;
+                } else {
+                  _result = "✅ Looks Safe for now\nBut still shine your eye!";
+                  _resultColor = Colors.green;
+                }
+              });
+            }
+            @override
+            Widget build(BuildContext context) {
+              return Scaffold(
+                appBar: AppBar(title: Text("ScamLens - Scam Detector"), backgroundColor: Colors.deepPurple, foregroundColor: Colors.white, centerTitle: true),
+                body: Padding(padding: EdgeInsets.all(16), child: Column(children: [
+                  Icon(Icons.security, size: 80, color: Colors.deepPurple),
+                  SizedBox(height: 10),
+                  Text("Paste suspicious SMS or Link", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  SizedBox(height: 15),
+                  TextField(controller: _controller, maxLines: 5, decoration: InputDecoration(hintText: "Paste message here...", border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)))),
+                  SizedBox(height: 15),
+                  SizedBox(width: double.infinity, child: ElevatedButton(onPressed: _checkScam, style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurple, foregroundColor: Colors.white, padding: EdgeInsets.all(15)), child: Text("CHECK IF NA SCAM", style: TextStyle(fontSize: 18)))),
+                  SizedBox(height: 20),
+                  if (_result.isNotEmpty) Container(width: double.infinity, padding: EdgeInsets.all(16), decoration: BoxDecoration(color: _resultColor.withOpacity(0.15), border: Border.all(color: _resultColor, width: 2), borderRadius: BorderRadius.circular(12)), child: Text(_result, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: _resultColor), textAlign: TextAlign.center)),
+                ])),
+              );
+            }
+          }
+          ENDDART
+      - run: flutter pub get
+      - run: flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ScamLens-APK
+          path: build/app/outputs/flutter-apk/app-release.apk
